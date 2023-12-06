@@ -13,13 +13,14 @@ def loads_get_post():
     if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
         error_string = '{"Error": "Accept header requests mimetype not supported by this endpoint."}'
         return Response(error_string, status=406, mimetype='application/json')
-    content_type = request.headers.get('Content-Type')
-    if content_type != 'application/json':
-        error_string = '{"Error": "Received Unsupported mimetype. Please use application/json"}'
-        return Response(error_string, status=415, mimetype='application/json')
+    
     
     if request.method == 'POST':
         try:
+            content_type = request.headers.get('Content-Type')
+            if content_type != 'application/json':
+                error_string = '{"Error": "Received Unsupported mimetype. Please use application/json"}'
+                return Response(error_string, status=415, mimetype='application/json')
             # Check if the item name is between 3-30 characters
             content = request.get_json()
             item_name = content["item"]
