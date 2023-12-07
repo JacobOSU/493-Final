@@ -22,6 +22,7 @@ from flask import url_for
 from authlib.integrations.flask_client import OAuth
 from urllib.parse import quote_plus, urlencode
 from authlib.integrations.flask_client import OAuth
+from datetime import datetime
 
 app = Flask(__name__)
 #app.register_blueprint(boat.bp)
@@ -67,14 +68,35 @@ def home():
     user_info = session.get("user")
     if user_info:
         id_token = user_info.get("id_token")
+        #payload = verify_jwt(request)
+        #owner_id = payload["sub"]
+        #new_user = datastore.entity.Entity(key=client.key(constants.users))
+        #new_user.update({"owner_id": owner_id,
+        #"email": session.get("user"),
+        #"date_created": datetime.now().date()})
+        #client.put(new_user)
+        #new_user["id"] = new_user.key.id
     else:
         id_token = None
+    if id_token is not None:
+        query = client.query(kind=constants.users)
+        query.add_filter('JWT', '=', id_token)
+        result = list(query.fetch())
+
+        # Check if user already exists in db
+        if len(result) == 0:
+            new_user = datastore.entity.Entity(key=client.key(constants.users))
+            user_info_json = session["user"]
+            owner_id = user_info_json["userinfo"]["sub"]
+            new_user.update({"JWT": id_token, "owner_id": owner_id})
+            client.put(new_user)
     return render_template(
         "home.html",
         session=session.get("user"),
         id_token = id_token,
         pretty=json.dumps(session.get("user"), indent=4),
     )
+
 
 
 @app.route("/callback", methods=["GET", "POST"])
