@@ -63,10 +63,13 @@ def boats_get_post():
                 error_string = json.dumps({"Error": "Boat length must be between 5 and 2000 feet long"})
                 return Response(error_string, status=400, mimetype='application/json')
             
+
             new_boat = datastore.entity.Entity(key=client.key(constants.boats))
             new_boat.update({'name': content['name'], 
                             'type': content['type'],
                             'length': content['length'],
+                            'public': content['public'],
+                            'owner': boat_owner,
                             'loads': []
                             })
             client.put(new_boat)
@@ -365,3 +368,6 @@ def get_reservations(id):
         #return Response(json.dumps(client.get_multi(load_list)), status=200, mimetype='application/json')
     else:
         return json.dumps([])
+
+
+#///////////////////////////////////////////////////////////////////////////////////////////////////////////
