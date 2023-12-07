@@ -76,7 +76,7 @@ def loads_get_post():
         return Response(json.dumps(output), status=200, mimetype='application/json')
 
 
-@bp.route('/<id>', methods=['PUT','DELETE', 'GET'])
+@bp.route('/<id>', methods=['PUT','DELETE', 'GET', 'PATCH'])
 def loads_put_delete(id):
     if request.method == 'PUT':
         content_type = request.headers.get('Content-Type')
@@ -164,5 +164,57 @@ def loads_put_delete(id):
         except:
             error_string = '{ "Error": "No load with this load_id exists"}'
             return Response(error_string, status=404, mimetype='application/json')
+        
+    elif request.method == 'PATCH':
+        accept_header = request.headers.get('Accept')
+        if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
+            error_string = '{"Error": "Accept header requests mimetype not supported by this endpoint."}'
+            return Response(error_string, status=406, mimetype='application/json')
+        content_type = request.headers.get('Content-Type')
+        if content_type != 'application/json':
+            error_string = '{"Error": "Received Unsupported mimetype. Please use application/json"}'
+            return Response(error_string, status=415, mimetype='application/json')
+        load_key = client.key(constants.loads, int(id))
+        load = client.get(key=load_key)
+        if load is None:    
+            error_string = '{ "Error": "No load with this load_id exists" }'
+            return Response(error_string, status=404, mimetype="application/json")
+        try:
+            content = request.get_json()
+            if "item" in content and content["item"] is not None and content["item"] != "":
+                item_name = content["item"]
+                # Check if the item name is between 3 and 30 characters long
+                if len(item_name) > 30 or len(item_name) < 3:
+                    error_string = json.dumps({"Error": "Item name must be between 3 and 30 characters long"})
+                    return Response(error_string, status=400, mimetype='application/json')
+                # Check if the name contains only letters, numbers, and spaces
+                if not all(char.isalnum() or char.isspace() for char in item_name):
+                    error_string = json.dumps({"Error": "Item name can only contain letters, numbers, and spaces"})
+                    return Response(error_string, status=400, mimetype='application/json')
+                load.update({"item": content["item"]})
+
+
+            if "creation_date" in content and content["creation_date"] is not None and content["creation_date"] != "":
+                load.update({"creation_date": content["creation_date"]})
+
+
+            if "volume" in content and content["volume"] is not None and content["volume"] != "":
+                load_volume = content["volume"]
+                if not isinstance(load_volume, int):
+                    error_string = '{ "Error": "Load volume must be a number" }'
+                    return Response(error_string, status=400, mimetype="application/json")
+                if  load_volume > 100000 or load_volume < 1:
+                    error_string = json.dumps({"Error": "Load volume must be between 1 and 100000"})
+                    return Response(error_string, status=400, mimetype='application/json')
+                load.update({"volume": content["volume"]})
+            
+            
+            client.put(load)
+            load["id"] = id
+            load["self"] = request.base_url
+            return Response(json.dumps(load), status=200, mimetype='application/json')
+        except:
+            error_string = '{ "Error": "The request object is missing at least one of the required attributes or request mimetype not JSON" }'
+            return Response(error_string, status=400, mimetype='application/json')
     else:
         return 'Method not recognized'
