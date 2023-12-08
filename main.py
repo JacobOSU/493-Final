@@ -68,6 +68,7 @@ def home():
     user_info = session.get("user")
     if user_info:
         id_token = user_info.get("id_token")
+        unique_id = user_info["userinfo"]["sub"]
         #payload = verify_jwt(request)
         #owner_id = payload["sub"]
         #new_user = datastore.entity.Entity(key=client.key(constants.users))
@@ -78,6 +79,7 @@ def home():
         #new_user["id"] = new_user.key.id
     else:
         id_token = None
+        unique_id = None
     if id_token is not None:
         query = client.query(kind=constants.users)
         query.add_filter('JWT', '=', id_token)
@@ -87,13 +89,14 @@ def home():
         if len(result) == 0:
             new_user = datastore.entity.Entity(key=client.key(constants.users))
             user_info_json = session["user"]
-            owner_id = user_info_json["userinfo"]["sub"]
-            new_user.update({"JWT": id_token, "owner_id": owner_id})
+            unique_id = user_info_json["userinfo"]["sub"]
+            new_user.update({"JWT": id_token, "owner_id": unique_id})
             client.put(new_user)
     return render_template(
         "home.html",
         session=session.get("user"),
         id_token = id_token,
+        unique_id = unique_id,
         pretty=json.dumps(session.get("user"), indent=4),
     )
 
@@ -325,7 +328,7 @@ def boats_get_post():
             owner = payload["sub"]
             query = client.query(kind=constants.boats)
             query.add_filter('owner', '=', owner)
-            ##boat_results = list(query.fetch())
+            boat_results = list(query.fetch())
             q_limit = int(request.args.get('limit', '5'))
             q_offset = int(request.args.get('offset', '0'))
             l_iterator = query.fetch(limit= q_limit, offset=q_offset)
@@ -340,6 +343,7 @@ def boats_get_post():
                 e["id"] = e.key.id
                 e["self"] = request.base_url + '/' + str(e.key.id)
             output = {"boats": results}
+            output["total_items"] = len(boat_results)
             if next_url:
                 output["next"] = next_url
             return Response(json.dumps(output), status=200, mimetype='application/json')
@@ -347,6 +351,7 @@ def boats_get_post():
             #public_boats = []
             query = client.query(kind="boats")
             query.add_filter('public', '=', True)
+            boat_results = list(query.fetch())
             q_limit = int(request.args.get('limit', '5'))
             q_offset = int(request.args.get('offset', '0'))
             l_iterator = query.fetch(limit= q_limit, offset=q_offset)
@@ -361,6 +366,7 @@ def boats_get_post():
                 e["id"] = e.key.id
                 e["self"] = request.base_url + '/' + str(e.key.id)
             output = {"boats": results}
+            output["total_items"] = len(boat_results)
             if next_url:
                 output["next"] = next_url
             return Response(json.dumps(output), status=200, mimetype='application/json')
