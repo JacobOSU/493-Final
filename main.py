@@ -267,6 +267,10 @@ def boats_get_post():
         if content_type != 'application/json':
             error_string = '{"Error": "Received Unsupported mimetype. Please use application/json"}'
             return Response(error_string, status=415, mimetype='application/json')
+        
+        payload = verify_jwt(request)
+        boat_owner = payload["sub"]
+
         try:
             content = request.get_json()
             boat_name = content["name"]
@@ -310,8 +314,7 @@ def boats_get_post():
                 error_string = json.dumps({"Error": "Boat length must be between 5 and 2000 feet long"})
                 return Response(error_string, status=400, mimetype='application/json')
             
-            payload = verify_jwt(request)
-            boat_owner = payload["sub"]
+            
 
             new_boat = datastore.entity.Entity(key=client.key(constants.boats))
             new_boat.update({'name': content['name'], 
@@ -333,9 +336,10 @@ def boats_get_post():
         if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
             error_string = '{"Error": "Accept header requests mimetype not supported by this endpoint."}'
             return Response(error_string, status=406, mimetype='application/json')
+        
+        payload = verify_jwt(request)
+        owner = payload["sub"]
         try:
-            payload = verify_jwt(request)
-            owner = payload["sub"]
             query = client.query(kind=constants.boats)
             query.add_filter('owner', '=', owner)
             boat_results = list(query.fetch())
@@ -403,6 +407,10 @@ def boats_put_delete(id):
         if content_type != 'application/json':
             error_string = '{"Error": "Received Unsupported mimetype. Please use application/json"}'
             return Response(error_string, status=415, mimetype='application/json')
+        
+        
+        payload = verify_jwt(request)
+        owner = payload["sub"]
         try:
             
             
@@ -453,8 +461,7 @@ def boats_put_delete(id):
                 error_string = '{"Error": "No boat with this boat_id exists"}'
                 return Response(error_string, status=404, mimetype='application/json')
             
-            payload = verify_jwt(request)
-            owner = payload["sub"]
+            
 
             if owner != boat["owner"]:
                 return Response(status=403)
@@ -474,9 +481,11 @@ def boats_put_delete(id):
         if boat is None:
             error_string = '{"Error": "No boat with this boat_id exists"}'
             return Response(error_string, status=404, mimetype='application/json')
+        
+        payload = verify_jwt(request)
+        owner = payload["sub"]
         try:
-            payload = verify_jwt(request)
-            owner = payload["sub"]
+            
             if owner == boat["owner"]:
                 for load_entity in boat['loads']:
                     load_id = load_entity['id']
@@ -493,6 +502,8 @@ def boats_put_delete(id):
         
 
     elif request.method == 'GET':
+        payload = verify_jwt(request)
+        owner = payload["sub"]
         try:
             accept_header = request.headers.get('Accept')
             if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
@@ -503,8 +514,7 @@ def boats_put_delete(id):
             if boat is None:
                 error_string = '{ "Error": "No boat with this boat_id exists" }'
                 return Response(error_string, status=404, mimetype='application/json')
-            payload = verify_jwt(request)
-            owner = payload["sub"]
+            
             if owner != boat["owner"]:
                 return Response(status=403)
             
@@ -528,9 +538,11 @@ def boats_put_delete(id):
         if boat is None:    
             error_string = '{ "Error": "No boat with this boat_id exists" }'
             return Response(error_string, status=404, mimetype="application/json")
-        try:
-            payload = verify_jwt(request)
-            owner = payload["sub"]
+        
+
+        payload = verify_jwt(request)
+        owner = payload["sub"]
+        try:    
             if owner != boat["owner"]:
                 return Response(status=403)
             content = request.get_json()
