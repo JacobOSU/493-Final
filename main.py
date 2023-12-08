@@ -254,7 +254,7 @@ def get_users():
         user["id"] = user.key.id
     return Response(json.dumps(users_results), status=200, mimetype='application/json')
 
-@app.route('/boats', methods=['POST','GET'])
+@app.route('/boats', methods=['POST','GET', 'DELETE', 'PUT'])
 def boats_get_post():
     
     
@@ -472,7 +472,8 @@ def boats_put_delete(id):
         boat_key = client.key("boats", int(id))
         boat = client.get(key=boat_key)
         if boat is None:
-            return Response("No boat with this boat_id exists", status=403, mimetype='application/json')
+            error_string = '{"Error": "No boat with this boat_id exists"}'
+            return Response(error_string, status=404, mimetype='application/json')
         try:
             payload = verify_jwt(request)
             owner = payload["sub"]
@@ -499,13 +500,14 @@ def boats_put_delete(id):
                 return Response(error_string, status=406, mimetype='application/json')
             boat_key = client.key(constants.boats, int(id))
             boat = client.get(key=boat_key)
+            if boat is None:
+                error_string = '{ "Error": "No boat with this boat_id exists" }'
+                return Response(error_string, status=404, mimetype='application/json')
             payload = verify_jwt(request)
             owner = payload["sub"]
             if owner != boat["owner"]:
                 return Response(status=403)
-            if boat is None:
-                error_string = '{ "Error": "No boat with this boat_id exists" }'
-                return Response(error_string, status=404, mimetype='application/json')
+            
             boat["id"] = str(id)
             boat["self"] = request.base_url
             
