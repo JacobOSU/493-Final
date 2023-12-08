@@ -57,6 +57,7 @@ def loads_get_post():
             return Response(error_string, status=400, mimetype='application/json')
     elif request.method == 'GET':
         query = client.query(kind=constants.loads)
+        load_results = list(query.fetch())
         q_limit = int(request.args.get('limit', '5'))
         q_offset = int(request.args.get('offset', '0'))
         g_iterator = query.fetch(limit= q_limit, offset=q_offset)
@@ -71,6 +72,7 @@ def loads_get_post():
             e["id"] = e.key.id
             e["self"] = request.base_url + '/' + str(e.key.id)
         output = {"loads": results}
+        output["total_items"] = len(load_results)
         if next_url:
             output["next"] = next_url
         return Response(json.dumps(output), status=200, mimetype='application/json')

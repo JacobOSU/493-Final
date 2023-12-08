@@ -381,7 +381,9 @@ def boats_get_post():
 
 @app.route('/boats/<id>', methods=['PUT','DELETE', 'GET', 'PATCH'])
 def boats_put_delete(id):
-    
+    if id == "null":
+        error_string = '{"Error": "No boat with this boat_id exists"}'
+        return Response(error_string, status=404, mimetype='application/json')
     if request.method == 'PUT':
         accept_header = request.headers.get('Accept')
         if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
@@ -391,72 +393,94 @@ def boats_put_delete(id):
         if content_type != 'application/json':
             error_string = '{"Error": "Received Unsupported mimetype. Please use application/json"}'
             return Response(error_string, status=415, mimetype='application/json')
-        #try:
-        content = request.get_json()
-        boat_name = content["name"]
-        query = client.query(kind=constants.boats)
-        query.add_filter('name', '=', boat_name)
-        result = list(query.fetch())
+        try:
+            
+            
+            content = request.get_json()
+            boat_name = content["name"]
+            query = client.query(kind=constants.boats)
+            query.add_filter('name', '=', boat_name)
+            result = list(query.fetch())
 
-        # Check if boat name already exists
-        if len(result) != 0:
-            error_string = '{"Error": "Boat name already exists"}'
-            return Response(error_string, status=403, mimetype='application/json')
-        
-        name = content["name"]
-        boat_type = content["type"]
-        boat_length = content["length"]
+            # Check if boat name already exists
+            if len(result) != 0:
+                error_string = '{"Error": "Boat name already exists"}'
+                return Response(error_string, status=403, mimetype='application/json')
+            
+            name = content["name"]
+            boat_type = content["type"]
+            boat_length = content["length"]
 
-        # Check if the name is at most 30 characters long
-        if len(name) > 30 or len(name) < 3:
-            error_string = json.dumps({"Error": "Name must be between 3 and 30 characters long"})
+            # Check if the name is at most 30 characters long
+            if len(name) > 30 or len(name) < 3:
+                error_string = json.dumps({"Error": "Name must be between 3 and 30 characters long"})
+                return Response(error_string, status=400, mimetype='application/json')
+            # Check if the name contains only letters, numbers, and spaces
+            if not all(char.isalnum() or char.isspace() for char in name):
+                error_string = json.dumps({"Error": "Name can only contain letters, numbers, and spaces"})
+                return Response(error_string, status=400, mimetype='application/json')
+            
+            #Check if boat type is between 3 and 30 characters long
+            if len(boat_type) > 30 or len(boat_type) < 3:
+                error_string = json.dumps({"Error": "Boat type must be between 3 and 30 characters long"})
+                return Response(error_string, status=400, mimetype='application/json')
+            # Check if the type contains only letters, numbers, and spaces
+            if not all(char.isalnum() or char.isspace() for char in boat_type):
+                error_string = json.dumps({"Error": "Boat type can only contain letters, numbers, and spaces"})
+                return Response(error_string, status=400, mimetype='application/json')
+            
+            # Check that boat length is an integer
+            if not isinstance(boat_length, int):
+                error_string = '{ "Error": "Boat length must be a number" }'
+                return Response(error_string, status=400, mimetype="application/json")
+            # Check that boat length is within 5-1000 ft long
+            if  boat_length > 2000 or boat_length < 5:
+                error_string = json.dumps({"Error": "Boat length must be between 5 and 2000 feet long"})
+                return Response(error_string, status=400, mimetype='application/json')
+            boat_key = client.key(constants.boats, int(id))
+            boat = client.get(key=boat_key)
+            if boat is None:
+                error_string = '{"Error": "No boat with this boat_id exists"}'
+                return Response(error_string, status=404, mimetype='application/json')
+            
+            payload = verify_jwt(request)
+            owner = payload["sub"]
+
+            if owner != boat["owner"]:
+                return Response(status=403)
+
+            boat.update({"name": content["name"], "type": content["type"],
+            "length": content["length"], "public": content["public"]})
+            client.put(boat)
+            return ('',200)
+        except:
+            error_string = '{"Error": "The request object is missing at least one of the required attributes or JWT is invalid"}'
             return Response(error_string, status=400, mimetype='application/json')
-        # Check if the name contains only letters, numbers, and spaces
-        if not all(char.isalnum() or char.isspace() for char in name):
-            error_string = json.dumps({"Error": "Name can only contain letters, numbers, and spaces"})
-            return Response(error_string, status=400, mimetype='application/json')
-        
-        #Check if boat type is between 3 and 30 characters long
-        if len(boat_type) > 30 or len(boat_type) < 3:
-            error_string = json.dumps({"Error": "Boat type must be between 3 and 30 characters long"})
-            return Response(error_string, status=400, mimetype='application/json')
-        # Check if the type contains only letters, numbers, and spaces
-        if not all(char.isalnum() or char.isspace() for char in boat_type):
-            error_string = json.dumps({"Error": "Boat type can only contain letters, numbers, and spaces"})
-            return Response(error_string, status=400, mimetype='application/json')
-        
-        # Check that boat length is an integer
-        if not isinstance(boat_length, int):
-            error_string = '{ "Error": "Boat length must be a number" }'
-            return Response(error_string, status=400, mimetype="application/json")
-        # Check that boat length is within 5-1000 ft long
-        if  boat_length > 2000 or boat_length < 5:
-            error_string = json.dumps({"Error": "Boat length must be between 5 and 2000 feet long"})
-            return Response(error_string, status=400, mimetype='application/json')
-        boat_key = client.key(constants.boats, int(id))
-        boat = client.get(key=boat_key)
-        boat.update({"name": content["name"], "type": content["type"],
-        "length": content["length"]})
-        client.put(boat)
-        return ('',200)
-        #except:
-            #error_string = '{"Error": "The request object is missing at least one of the required attributes"}'
-            #return Response(error_string, status=400, mimetype='application/json')
     elif request.method == 'DELETE':
-        boat_key = client.key(constants.boats, int(id))
+        if id is None or id == 'null':
+            return Response(status=401)
+        boat_key = client.key("boats", int(id))
         boat = client.get(key=boat_key)
         if boat is None:
-            error_string = '{"Error": "No boat with this boat_id exists"}'
-            return Response(error_string, status=404, mimetype='application/json')
-        for load_entity in boat['loads']:
-                load_id = load_entity['id']
-                load_key = client.key(constants.loads, int(load_id))
-                load = client.get(key=load_key)
-                load.update({"carrier": None})
-                client.put(load)
+            return Response("No boat with this boat_id exists", status=403, mimetype='application/json')
+        try:
+            payload = verify_jwt(request)
+            owner = payload["sub"]
+            if owner == boat["owner"]:
+                for load_entity in boat['loads']:
+                    load_id = load_entity['id']
+                    load_key = client.key(constants.loads, int(load_id))
+                    load = client.get(key=load_key)
+                    load.update({"carrier": None})
+                    client.put(load)
+                client.delete(boat_key) 
+                return Response(status=204, mimetype='application/json')
+            else:
+                return Response(status=403, mimetype='application/json')
+        except:
+            return Response(status=401, mimetype='application/json')
         
-        client.delete(boat_key)
-        return ('',204)
+
     elif request.method == 'GET':
         try:
             accept_header = request.headers.get('Accept')
