@@ -82,7 +82,9 @@ def home():
         unique_id = None
     if id_token is not None:
         query = client.query(kind=constants.users)
-        query.add_filter('JWT', '=', id_token)
+        user_info_json = session["user"]
+        unique_id = user_info_json["userinfo"]["sub"]
+        query.add_filter('owner_id', '=', unique_id)
         result = list(query.fetch())
 
         # Check if user already exists in db
@@ -244,6 +246,14 @@ def login_user():
 
 #/////////////////////////////////////////////////////////////////////////////
 #/////////////////////////////////////////////////////////////////////////////
+@app.route('/users', methods=['GET'])
+def get_users():
+    query = client.query(kind=constants.users)
+    users_results = list(query.fetch())
+    for user in users_results:
+        user["id"] = user.key.id
+    return Response(json.dumps(users_results), status=200, mimetype='application/json')
+
 @app.route('/boats', methods=['POST','GET'])
 def boats_get_post():
     
