@@ -489,12 +489,19 @@ def boats_put_delete(id):
                 return Response(error_string, status=406, mimetype='application/json')
             boat_key = client.key(constants.boats, int(id))
             boat = client.get(key=boat_key)
+            payload = verify_jwt(request)
+            owner = payload["sub"]
+            if owner != boat["owner"]:
+                return Response(status=403)
+            if boat is None:
+                error_string = '{ "Error": "No boat with this boat_id exists" }'
+                return Response(error_string, status=404, mimetype='application/json')
             boat["id"] = str(id)
             boat["self"] = request.base_url
+            
             return Response(json.dumps(boat), status=200, mimetype='application/json')
         except:
-            error_string = '{ "Error": "No boat with this boat_id exists" }'
-            return Response(error_string, status=404, mimetype='application/json')
+            return Response(status=401, mimetype='application/json')
     elif request.method == 'PATCH':
         accept_header = request.headers.get('Accept')
         if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
@@ -510,6 +517,10 @@ def boats_put_delete(id):
             error_string = '{ "Error": "No boat with this boat_id exists" }'
             return Response(error_string, status=404, mimetype="application/json")
         try:
+            payload = verify_jwt(request)
+            owner = payload["sub"]
+            if owner != boat["owner"]:
+                return Response(status=403)
             content = request.get_json()
             if "name" in content and content["name"] is not None and content["name"] != "":
                 boat_name = content["name"]
@@ -560,8 +571,7 @@ def boats_put_delete(id):
             boat["self"] = request.base_url
             return Response(json.dumps(boat), status=200, mimetype='application/json')
         except:
-            error_string = '{ "Error": "The request object is missing at least one of the required attributes or request mimetype not JSON" }'
-            return Response(error_string, status=400, mimetype='application/json')
+            return Response(status=401, mimetype='application/json')
     else:
         return 'Method not recogonized'
 
