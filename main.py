@@ -337,9 +337,10 @@ def boats_get_post():
             error_string = '{"Error": "Accept header requests mimetype not supported by this endpoint."}'
             return Response(error_string, status=406, mimetype='application/json')
         
-        payload = verify_jwt(request)
-        owner = payload["sub"]
+        
         try:
+            payload = verify_jwt(request)
+            owner = payload["sub"]
             query = client.query(kind=constants.boats)
             query.add_filter('owner', '=', owner)
             boat_results = list(query.fetch())
@@ -525,7 +526,7 @@ def boats_put_delete(id):
         except:
             return Response(status=401, mimetype='application/json')
     elif request.method == 'PATCH':
-        accept_header = request.headers.get('Accept')
+        accept_header = request.headers.get('Accept', '')
         if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
             error_string = '{"Error": "Accept header requests mimetype not supported by this endpoint."}'
             return Response(error_string, status=406, mimetype='application/json')

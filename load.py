@@ -157,6 +157,10 @@ def loads_put_delete(id):
         client.delete(load_key)
         return ('',204)
     elif request.method == 'GET':
+        accept_header = request.headers.get('Accept')
+        if accept_header is None or ('application/json' not in accept_header and '*/*' not in accept_header):
+            error_string = '{"Error": "Accept header requests mimetype not supported by this endpoint."}'
+            return Response(error_string, status=406, mimetype='application/json')
         try:
             load_key = client.key(constants.loads, int(id))
             load = client.get(key=load_key)
@@ -216,7 +220,7 @@ def loads_put_delete(id):
             load["self"] = request.base_url
             return Response(json.dumps(load), status=200, mimetype='application/json')
         except:
-            error_string = '{ "Error": "The request object is missing at least one of the required attributes or request mimetype not JSON" }'
+            error_string = '{ "Error": "The request object is missing at least one of the required attributes" }'
             return Response(error_string, status=400, mimetype='application/json')
     else:
         return 'Method not recognized'
